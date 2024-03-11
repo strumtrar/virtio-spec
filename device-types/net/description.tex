@@ -88,6 +88,8 @@ negotiated.
 \item[VIRTIO_NET_F_CTRL_MAC_ADDR(23)] Set MAC address through control
     channel.
 
+\item[VIRTIO_NET_F_TX_HASH(49)] Driver sends hash report
+
 \item[VIRTIO_NET_F_DEVICE_STATS(50)] Device can provide device-level statistics
     to the driver through the control virtqueue.
 
@@ -641,6 +643,34 @@ been negotiated:
 
 If VIRTIO_NET_HDR_F_NEEDS_CSUM is not set, the device MUST NOT
 rely on the packet checksum being correct.
+
+\paragraph{Hash calculation for outgoing packets}
+\label{sec:Device Types / Network Device / Device Operation / Packet Transmission / Hash calculation for outgoing packets }
+
+If the VIRTIO_NET_F_TX_HASH was negotiated and the packet includes a hash, the driver uses
+the structure virtio_net_hdr_hash_ts instead of virtio_net_hdr and increases the \field{hdr_len} accordingly.
+
+\begin{lstlisting}
+  struct virtio_net_hdr_hash_ts {
+    struct {
+      struct virtio_net_hdr hdr;
+      __le33 value;
+      __le16 report;
+      __le16 flow_state;
+    } hash;
+    __u32 reserved;
+  };
+\end{lstlisting}
+
+The driver fills \field{hash_value} with the value of the calculated hash and \field{hash_report} with the report type of the calculated hash.
+
+Possible values that the driver supports in \field{hash_report} are defined below.
+
+\begin{lstlisting}
+#define VIRTIO_NET_HASH_REPORT_L4             (1 << 10)
+#define VIRTIO_NET_HASH_REPORT_OTHER          (1 << 11)
+\end{lstlisting}
+
 \paragraph{Packet Transmission Interrupt}\label{sec:Device Types / Network Device / Device Operation / Packet Transmission / Packet Transmission Interrupt}
 
 Often a driver will suppress transmission virtqueue interrupts
