@@ -88,6 +88,8 @@ negotiated.
 \item[VIRTIO_NET_F_CTRL_MAC_ADDR(23)] Set MAC address through control
     channel.
 
+\item[VIRTIO_NET_F_TX_HASH(49)] Driver sends hash report
+
 \item[VIRTIO_NET_F_DEVICE_STATS(50)] Device can provide device-level statistics
     to the driver through the control virtqueue.
 
@@ -676,6 +678,30 @@ been negotiated:
 
 If VIRTIO_NET_HDR_F_NEEDS_CSUM is not set, the device MUST NOT
 rely on the packet checksum being correct.
+
+\paragraph{Hash calculation for outgoing packets}
+\label{sec:Device Types / Network Device / Device Operation / Packet Transmission / Hash calculation for outgoing packets }
+
+If the VIRTIO_NET_F_TX_HASH was negotiated and the packet includes a hash, the driver uses
+the structure virtio_net_hdr defined in \ref{sec:Device Types / Network Device / Device Operation}.
+The driver fills \field{hash_value} with the value of the calculated hash and \field{hash_report}
+with the report type of the calculated hash.
+
+The following possible values for \field{hash_report} extend the supported hash types from
+\ref{sec:Device Types / Network Device / Device Operation / Processing of Incoming Packets / Hash calculation for incoming packets / Supported/enabled hash types}
+
+\begin{lstlisting}
+#define VIRTIO_NET_HASH_REPORT_L4             (1 << 10)
+#define VIRTIO_NET_HASH_REPORT_OTHER          (1 << 11)
+\end{lstlisting}
+
+The hash types refer to the protocol layer addresses which are used to
+construct the packet's hash. L4 stands for layer-4.
+A hash report can be less specific than the actual layer the hash was
+computed on. Therefore the L4 hash report flag VIRTIO_NET_HASH_REPORT_L4
+flag can be set for all hashes from layer-4 and below. However the flag
+VIRTIO_NET_HASH_REPORT_OTHER should be used in that case.
+
 \paragraph{Packet Transmission Interrupt}\label{sec:Device Types / Network Device / Device Operation / Packet Transmission / Packet Transmission Interrupt}
 
 Often a driver will suppress transmission virtqueue interrupts
