@@ -88,6 +88,10 @@ negotiated.
 \item[VIRTIO_NET_F_CTRL_MAC_ADDR(23)] Set MAC address through control
     channel.
 
+\item[VIRTIO_NET_F_RX_TSTAMP(49)] Device can provide the receive time of a
+    packet to the driver. \field{struct virtio_net_hdr} size expands up to
+    field \field{tstamp} when VIRTIO_NET_F_RX_TSTAMP is negotiated.
+
 \item[VIRTIO_NET_F_DEVICE_STATS(50)] Device can provide device-level statistics
     to the driver through the control virtqueue.
 
@@ -629,6 +633,7 @@ struct virtio_net_hdr {
                         le16 resource_type;
                 } ipsec_resource_hdr;
         };
+        le64 tstamp;            (Only if VIRTIO_NET_F_RX_TSTAMP negotiated)
 };
 \end{lstlisting}
 
@@ -1083,6 +1088,9 @@ size is either 65601 or 1526 bytes accounting for 12 bytes of
 When VIRTIO_NET_F_HASH_REPORT is negotiated, the required receive buffer
 size is either 65609 or 1534 bytes accounting for 20 bytes of
 \field{struct virtio_net_hdr} followed by receive packet.
+When VIRTIO_NET_F_RX_TSTAMP is negotiated, the required receive buffer
+size is either 65629 or 1554 bytes accounting for 40 bytes of
+\field{struct virtio_net_hdr} followed by receive packet.
 
 \drivernormative{\paragraph}{Setting Up Receive Buffers}{Device Types / Network Device / Device Operation / Setting Up Receive Buffers}
 
@@ -1093,13 +1101,15 @@ size is either 65609 or 1534 bytes accounting for 20 bytes of
 	VIRTIO_NET_F_GUEST_USO4 or VIRTIO_NET_F_GUEST_USO6 are negotiated, the driver SHOULD populate
       the receive queue(s) with buffers of at least 65609 bytes if
       VIRTIO_NET_F_HASH_REPORT is negotiated, and of at least 65601 bytes if not.
+      If VIRTIO_NET_F_RX_TSTAMP is negotiated, the buffers SHOULD be at least 65629 bytes.
     \item Otherwise, the driver SHOULD populate the receive queue(s)
       with buffers of at least 1534 bytes if VIRTIO_NET_F_HASH_REPORT
       is negotiated, and of at least 1526 bytes if not.
+      If VIRTIO_NET_F_RX_TSTAMP is negotiated, the buffers SHOULD be at least 1554 bytes.
   \end{itemize}
 \item If VIRTIO_NET_F_MRG_RXBUF is negotiated, each buffer MUST be at
 least size of \field{struct virtio_net_hdr},
-i.e. 20 bytes if VIRTIO_NET_F_HASH_REPORT is negotiated, and 12 bytes if not.
+i.e. 40 bytes if VIRTIO_NET_F_RX_TSTAMP is negotiated, 20 bytes if VIRTIO_NET_F_HASH_REPORT is negotiated, and 12 bytes if not.
 \end{itemize}
 
 \begin{note}
@@ -1107,7 +1117,8 @@ Obviously each buffer can be split across multiple descriptor elements.
 \end{note}
 
 When calculating the size of \field{struct virtio_net_hdr}, the driver
-MUST consider all the fields inclusive up to \field{padding_reserved_2},
+MUST consider all the fields inclusive up to \field{tstamp},
+i.e. 40 bytes if VIRTIO_NET_F_RX_TSTAMP is negotiated or up to \field{padding_reserved_2}
 i.e. 32 bytes if VIRTIO_NET_F_OUT_NET_HEADER or VIRTIO_NET_F_IPSEC is negotiated or up to \field{inner_nh_offset}
 i.e. 24 bytes if VIRTIO_NET_F_HOST_UDP_TUNNEL_GSO is negotiated or up to \field{padding_reserved}
 i.e. 20 bytes if VIRTIO_NET_F_HASH_REPORT is negotiated, and 12 bytes if not.
@@ -1709,6 +1720,45 @@ VIRTIO_NET_HASH_TYPE_XXX = 1 << (VIRTIO_NET_HASH_REPORT_XXX - 1)
 #define VIRTIO_NET_HASH_REPORT_TCPv6_EX        8
 #define VIRTIO_NET_HASH_REPORT_UDPv6_EX        9
 \end{lstlisting}
+
+\paragraph{Timestamping for incoming packets}
+\label{sec:Device Types / Network Device / Device Operation / Processing of Incoming Packets / Timestamping for incoming packets}
+
+If VIRTIO_NET_F_RX_TSTAMP was negotiated, the device can record the time at
+which it received a packet and pass it to the driver in \field{tstamp}. This
+lets the driver use a time that is close to the wire, without the latency of
+the notification and the processing in the driver.
+
+\field{tstamp} is a time in nanoseconds on the TAI time scale, as
+kept by a clock of the device. It is a 64 bit unsigned value in little-endian
+byte order. The value 0 means that no timestamp was recorded for the packet.
+
+\begin{note}
+The layout of \field{struct virtio_net_hdr} is cumulative: \field{tstamp}
+is at the same offset whether or not the features that define the fields before
+it were negotiated. The bytes of such fields are reserved.
+\end{note}
+
+\devicenormative{\subparagraph}{Timestamping for incoming packets}{Device Types / Network Device / Device Operation / Processing of Incoming Packets / Timestamping for incoming packets}
+
+If VIRTIO_NET_F_RX_TSTAMP was negotiated, the device MUST set
+\field{tstamp} of a received packet either to the time of reception or to 0
+if no timestamp was recorded. The device MAY record a timestamp for only some
+of the received packets.
+
+The device SHOULD take the timestamp as close as possible to the point where the
+packet is received.
+
+The device MUST ignore \field{tstamp} of packets that the driver transmits.
+
+\drivernormative{\subparagraph}{Timestamping for incoming packets}{Device Types / Network Device / Device Operation / Processing of Incoming Packets / Timestamping for incoming packets}
+
+If VIRTIO_NET_F_RX_TSTAMP was negotiated, the driver MUST set \field{tstamp}
+of a packet it transmits to 0.
+
+The driver MUST treat a \field{tstamp} of 0 in a received packet as
+"no timestamp recorded". The driver MAY ignore \field{tstamp}, for example
+unless the user has enabled timestamping.
 
 \subsubsection{Control Virtqueue}\label{sec:Device Types / Network Device / Device Operation / Control Virtqueue}
 
