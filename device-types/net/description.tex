@@ -88,6 +88,8 @@ negotiated.
 \item[VIRTIO_NET_F_CTRL_MAC_ADDR(23)] Set MAC address through control
     channel.
 
+\item[VIRTIO_NET_F_RX_TSTAMP(48)] Device sends TAI receive time
+
 \item[VIRTIO_NET_F_TX_HASH(49)] Driver sends hash report
 
 \item[VIRTIO_NET_F_DEVICE_STATS(50)] Device can provide device-level statistics
@@ -415,6 +417,7 @@ struct virtio_net_hdr {
 #define VIRTIO_NET_HDR_F_NEEDS_CSUM    1
 #define VIRTIO_NET_HDR_F_DATA_VALID    2
 #define VIRTIO_NET_HDR_F_RSC_INFO      4
+#define VIRTIO_NET_HDR_F_TSTAMP        8
         u8 flags;
 #define VIRTIO_NET_HDR_GSO_NONE        0
 #define VIRTIO_NET_HDR_GSO_TCPV4       1
@@ -659,6 +662,7 @@ the structure virtio_net_hdr_hash_ts instead of virtio_net_hdr and increases the
       __le16 flow_state;
     } hash;
     __u32 reserved;
+    __le64 tstamp;
   };
 \end{lstlisting}
 
@@ -1176,6 +1180,13 @@ VIRTIO_NET_HASH_TYPE_XXX = 1 << (VIRTIO_NET_HASH_REPORT_XXX - 1)
 #define VIRTIO_NET_HASH_REPORT_TCPv6_EX        8
 #define VIRTIO_NET_HASH_REPORT_UDPv6_EX        9
 \end{lstlisting}
+
+\paragraph{Timestamping for incoming packets}
+\label{sec:Device Types / Network Device / Device Operation / Processing of Incoming Packets / Timestamping for incoming packets}
+
+If the feature VIRTIO_NET_F_RX_TSTAMP is negotiated, the \field{hdr_len} is set to the size of the virtio_net_hdr_hash_ts struct.
+The device may pass receive timestamps for incoming packets via \field{tstamp} and signals this with the
+VIRTIO_NET_HDR_F_TSTAMP flag.
 
 \subsubsection{Control Virtqueue}\label{sec:Device Types / Network Device / Device Operation / Control Virtqueue}
 
