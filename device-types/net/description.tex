@@ -88,6 +88,8 @@ negotiated.
 \item[VIRTIO_NET_F_CTRL_MAC_ADDR(23)] Set MAC address through control
     channel.
 
+\item[VIRTIO_NET_F_TX_TIME(46)] Driver sets TAI delivery time
+
 \item[VIRTIO_NET_F_TX_TSTAMP(47)] Device sends TAI transmit time
 
 \item[VIRTIO_NET_F_RX_TSTAMP(48)] Device sends TAI receive time
@@ -572,6 +574,9 @@ specifically in the protocol.}.
   flag is set. One writable input descriptor with the size of a timestamp,
   i.e. \field{tstamp} in virtio_net_hdr_hash_ts,
   is appended to the output descriptor.
+
+\item If the driver negotiated the VIRTIO_NET_F_TX_TIME the transmit time
+of the packet is written to the \field{tstamp}.
 \end{enumerate}
 
 \drivernormative{\paragraph}{Packet Transmission}{Device Types / Network Device / Device Operation / Packet Transmission}
