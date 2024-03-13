@@ -88,6 +88,8 @@ negotiated.
 \item[VIRTIO_NET_F_CTRL_MAC_ADDR(23)] Set MAC address through control
     channel.
 
+\item[VIRTIO_NET_F_TX_TSTAMP(47)] Device sends TAI transmit time
+
 \item[VIRTIO_NET_F_RX_TSTAMP(48)] Device sends TAI receive time
 
 \item[VIRTIO_NET_F_TX_HASH(49)] Driver sends hash report
@@ -532,6 +534,12 @@ specifically in the protocol.}.
 \item The header and packet are added as one output descriptor to the
   transmitq, and the device is notified of the new entry
   (see \ref{sec:Device Types / Network Device / Device Initialization}~\nameref{sec:Device Types / Network Device / Device Initialization}).
+
+\item If the driver negotiated the VIRTIO_NET_F_TX_TSTAMP and hardware
+  timestamping is supported on the device, the VIRTIO_NET_HDR_F_TSTAMP
+  flag is set. One writable input descriptor with the size of a timestamp,
+  i.e. \field{tstamp} in virtio_net_hdr_hash_ts,
+  is appended to the output descriptor.
 \end{enumerate}
 
 \drivernormative{\paragraph}{Packet Transmission}{Device Types / Network Device / Device Operation / Packet Transmission}
@@ -674,6 +682,17 @@ Possible values that the driver supports in \field{hash_report} are defined belo
 #define VIRTIO_NET_HASH_REPORT_L4             (1 << 10)
 #define VIRTIO_NET_HASH_REPORT_OTHER          (1 << 11)
 \end{lstlisting}
+
+\paragraph{Timestamping for outgoing packets}
+\label{sec:Device Types / Network Device / Device Operation / Packet Transmission / Timestamping for outgoing packets}
+
+If the feature VIRTIO_NET_F_TX_TSTAMP is negotiated, the driver sets \field{hdr_len} to the virtio_net_hdr_hash_ts.
+
+The driver sets VIRTIO_NET_HDR_F_STAMP to request a timestamp returned on completion in \field{tstamp}.
+
+The device gets the second, writable descriptor, generates a timestamp and writes it to the \field{tstamp}.
+
+Finally, after transmitting the packet, the driver gets the \field{tstamp} from the packet.
 
 \paragraph{Packet Transmission Interrupt}\label{sec:Device Types / Network Device / Device Operation / Packet Transmission / Packet Transmission Interrupt}
 
